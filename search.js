@@ -1,13 +1,13 @@
 const lunr = require('lunr');
-const data = require("./contents");
+const allContent = require("./contents");
 
 // initialise lunr.js
 var idx = lunr(function () {
-  this.ref('title');
+  this.ref('id');
   this.field('title', { boost: 10 });
   this.field('body');
   this.field('desc');
-  data.forEach(function (doc) {
+  allContent.forEach(function (doc) {
     this.add(doc)
   }, this)
 });
@@ -57,8 +57,7 @@ var multiSearch = (v, s) => {
   while ((match = re.exec(s)) != null && !stp) {
     search.push({ index: match.index });
     if (search.length === 2) {
-      let diff = search[1].index - search[0].index;
-      if (diff > 30) {
+      if (search[1].index - search[0].index > 30) {
         search.pop();
       }
       stp = true;
@@ -69,15 +68,15 @@ var multiSearch = (v, s) => {
 
 // returns back the string 
 // to showcase in the results (right-side)
-var _find = (str, v, type) => {
-  let s = str.toLowerCase(),
+var _find = (str, valToFind, type) => {
+  let s = str.toLowerCase(), 
     new_str = '';
   if (type === 'title') {
     new_str = str;
   } else {
-
-    var i_search = multiSearch(v, s);
-    let index = find_index(str, i_search, v.length);
+    var i_search = multiSearch(valToFind, s);
+    console.log("i_search",i_search);
+    let index = find_index(str, i_search, valToFind.length);
     if (index.start == 0 && index.end == str.length) {
       new_str = str.substring(index.start, index.end);
     } else if (index.start == 0) {
@@ -89,20 +88,20 @@ var _find = (str, v, type) => {
     }
   }
   let st = new_str.toLowerCase(),
-    new_index = multiSearch(v, st);
+    new_index = multiSearch(valToFind, st);
   var index = [];
   if (new_index.length === 2) {
     new_index.map(function (o) {
       let i = {
         start: o.index,
-        end: o.index + v.length
+        end: o.index + valToFind.length
       };
       index.push(i);
     })
   } else {
     let i = {
       start: new_index[0].index,
-      end: new_index[0].index + v.length
+      end: new_index[0].index + valToFind.length
     };
     index.push(i);
   }
@@ -114,40 +113,45 @@ var _find = (str, v, type) => {
 
 // core search functionality
 var search = (v) => {
-  if (v) {
-    var results = [];
-    var search_result = idx.search(v);
-    var r = search_result.map((o) => {
-      var i = data.map((file) => {
-        if (o.ref === file.title) {
-          var hl = {},
-            title = file.title.toLowerCase(),
-            desc = file.desc ? file.desc.toLowerCase() : '',
-            body = file.body.toLowerCase(),
-            val = v.toLowerCase();
-          if (title && title.indexOf(val) > -1) {
-            hl = _find(file.title, val, 'title');
-          } else if (desc && desc.indexOf(val) > -1) {
-            hl = _find(file.desc, val, 'desc');
-          } else if (body) {
-            if (file.body.indexOf(val) > -1) {
-              hl = _find(file.body, val, 'body');
-            }
-          }
-          let q = {
-            title: file.title,
-            url: `/docs/${file.url}`,
-            desc: file.desc,
-            hl: hl
-          };
-          results.push(q);
-        }
-      })
-    });
-    return results;
-  } else {
+  if(!v) {
     return [];
   }
+  var results = [], search_result = [];
+  console.log("----------search------------",v);
+  try {
+    search_result = idx.search(v);
+  } catch(e) {
+    console.log("Error:",e);
+  }
+  
+  var r = search_result.map((o) => {
+    if(o.score > 0) {
+      var file = allContent[o.ref];// indexing starts from 1
+      var hl = {},
+        title = file.title.toLowerCase(),
+        desc = file.desc ? file.desc.toLowerCase() : '',
+        body = file.body.toLowerCase(),
+        { layout } = file,
+        val = Object.keys(o.matchData.metadata)[0].toLowerCase(); // using metadata instead of search keyword
+      console.log(file.title, ":", o.score, o.matchData.metadata);
+      if (title && title.indexOf(val) > -1) {
+        hl = _find(file.title, val, 'title');
+      } else if (desc && desc.indexOf(val) > -1) {
+        hl = _find(file.desc, val, 'desc');
+      } else if (body && body.indexOf(val) > -1) {
+        hl = _find(file.body, val, 'body');
+      }
+      let q = {
+        title: file.title,
+        url: file.url,
+        desc: file.desc,
+        hl: hl,
+        tag: layout || "Docs"
+      };
+      results.push(q);
+    }
+  });
+  return results;
 }
 
 module.exports = search;

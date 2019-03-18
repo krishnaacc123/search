@@ -10,7 +10,8 @@ app.all('*', function(req, res, next) {
 });
 
 app.get('/api/:search', (req, res) => {
-  var result = search(req.params.search);
+  var key = decodeURIComponent(req.params.search)
+  var result = search(key);
   res.status(200).send({
     data: result
   })
