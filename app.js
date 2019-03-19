@@ -1,5 +1,6 @@
 const express = require("express");
 const search = require("./search");
+const allContent = require("./contents");
 const app = express();
 
 app.all('*', function(req, res, next) {
