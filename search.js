@@ -59,6 +59,7 @@ var multiSearch = (v, s) => {
   while ((match = re.exec(s)) != null) {
     search.push({ start: match.index, end: match.index + v.length - 1 });
     if (search[search.length - 1].end - search[0].start >= MAX_TEXT_LEN) {
+      search.pop();// remove last on
       break;
     }
   }
@@ -66,8 +67,8 @@ var multiSearch = (v, s) => {
   return search;
 }
 
-function partialString(startIndex) {
-  var i = 0;
+function partialString(s, startIndex) {
+  var i = 0, trimmedText = "";
   // extract text block
   if (s.length <= MAX_TEXT_LEN) {
     trimmedText = s;
@@ -76,6 +77,7 @@ function partialString(startIndex) {
     startIndex = search[0].start;
     trimmedText = s.substring(i - MAX_TEXT_LEN / 2, i - 1) + s.substring(i, i + MAX_TEXT_LEN / 2);
   }
+  return trimmedText;
 }
 
 /* Core search functionality
