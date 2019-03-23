@@ -1,5 +1,6 @@
 const lunr = require('lunr');
 const allContent = require("./contents");
+const MAX_TEXT_LEN = 200; // find and return max 200 characters max from body
 
 // initialise lunr.js
 var idx = lunr(function () {
@@ -8,48 +9,12 @@ var idx = lunr(function () {
   this.field('body');
   this.field('desc');
   allContent.forEach(function (doc) {
-    this.add(doc)
+    var { index } = doc; 
+    if (index == undefined) { // do not use for searching if index == false
+      this.add(doc)
+    }
   }, this)
 });
-
-// returns back the index of the string
-// to be showcased in the results (right-side)
-// var find_index = (str, index, l) => {
-//   var len = str.length,
-//     start = 0,
-//     end = 0;
-
-//   if (len <= 30) {
-//     start = 0;
-//     end = len;
-//   } else if (index.length === 2) {
-
-//     let index1 = index[0].index,
-//       index2 = index[1].index;
-
-//     start = index1 - 5 <= 0 ? 0 : index1 - 5;
-//     end = index1 + (index2 - index1) + l + 5 >= len
-//       ? len
-//       : start > 15
-//         ? index1 + (index2 - index1) + l + 5
-//         : index1 + (index2 - index1) + l + 10;
-//   }
-//   else {
-//     let indexx = index[0].index;
-//     start = indexx - 15 <= 0 ? 0 : indexx - 15;
-//     end = indexx + 15 >= len
-//       ? len
-//       : start > 15
-//         ? indexx + l + 15
-//         : indexx + l + 25;
-//   }
-//   return {
-//     start,
-//     end
-//   };
-// }
-
-var MAX_TEXT_LEN = 200; // find and return max 300 characters of description
 
 var multiSearch = (v, s) => {
   console.log();
@@ -59,7 +24,7 @@ var multiSearch = (v, s) => {
   while ((match = re.exec(s)) != null) {
     search.push({ start: match.index, end: match.index + v.length - 1 });
     if (search[search.length - 1].end - search[0].start >= MAX_TEXT_LEN) {
-      search.pop();// remove last on
+      search.pop();// remove last one
       break;
     }
   }
@@ -67,17 +32,34 @@ var multiSearch = (v, s) => {
   return search;
 }
 
-function partialString(s, startIndex) {
-  var i = 0, trimmedText = "";
-  // extract text block
+function trimString(s, term) {
+  var startIndex = s.indexOf(term);
+  var endIndex = startIndex + term.length - 1;
+  var trimmedText = "";
   if (s.length <= MAX_TEXT_LEN) {
     trimmedText = s;
   }
   else {
-    startIndex = search[0].start;
-    trimmedText = s.substring(i - MAX_TEXT_LEN / 2, i - 1) + s.substring(i, i + MAX_TEXT_LEN / 2);
+    trimmedText = '...' + s.substring(startIndex - MAX_TEXT_LEN / 2, endIndex + MAX_TEXT_LEN / 2) + '...';
   }
   return trimmedText;
+}
+
+function highlight(str, indexes) {
+  const HL_START = '<span class="highlight">';
+  const HL_END = '</span>';
+  var padding = 0;
+  for(var i = 0; i < indexes.length; i++) {
+    padding = i * (HL_START.length + HL_END.length)
+    indexes[i].start = indexes[i].start + padding;
+    indexes[i].end = indexes[i].end + padding;
+  }
+  indexes.forEach(function(index) {
+    str = str.substring(0, index.start) 
+          + HL_START + str.substring(index.start, index.end + 1) + HL_END 
+          + str.substring(index.end + 1, str.length + 1);     
+  });
+  return str;
 }
 
 /* Core search functionality
@@ -100,7 +82,7 @@ var search = (v) => {
     if(o.score > 0) {               // filter out 0 score results 
       let file = allContent[o.ref]; // o.ref is id to differentiate all json data
       let { title, desc, body, layout, url } = file;
-      let indexesTitle = [], indexesDesc = [], indexesBody = [];
+      let indexesTitle = [], indexesDesc = [], indexesBody = [], text = "", bodyTerms =[];
       title = title ? title.toLowerCase() : ''; // converting once and all to lowercase for ease in searching
       desc = desc ? desc.toLowerCase() : '';
       body = body ? body.toLowerCase() : '';
@@ -115,20 +97,35 @@ var search = (v) => {
         placesFoundIn.forEach(function(place) {
           console.log("place:",place);
           if (place == "title") {
+            // title = addHighlight(term, file);
             indexesTitle = indexesTitle.concat(multiSearch(term, title)); // key to search, content to search on
           } else if (place == "desc") {
             indexesDesc = indexesDesc.concat(multiSearch(term, desc));
-          } else if (place == "body") {
-            indexesBody = indexesBody.concat(multiSearch(term, body));
+            // desc = addHighlight(term, desc);
+          } else if (!indexesDesc.length && place == "body") { // if not found in desc then go for body
+            // indexesBody = indexesBody.concat(multiSearch(term, body));
+            bodyTerms.push(term);
           }
         });
       });
+      title = file.title;
+      if (indexesTitle.length) {
+        title = highlight(file.title, indexesTitle);
+      }
+      if (indexesDesc.length) {
+        text = highlight(file.desc, indexesDesc);
+      } else if (bodyTerms.length) {
+        text = trimString(file.body, bodyTerms[0]);
+        bodyTerms.forEach(function(term) {
+          indexesBody = indexesBody.concat(multiSearch(term, text.toLowerCase()));
+        });
+        text = highlight(text, indexesBody);
+      }
       console.log("indeces:",indexesTitle,indexesDesc,indexesBody)
       let q = {
-        title: file.title,
+        title: title,
         url,
-        desc: file.desc,
-        hl: "",
+        hl: text || file.desc,
         tag: layout || "Docs"
       };
       results.push(q);
@@ -138,18 +135,3 @@ var search = (v) => {
 }
 
 module.exports = search;
-
-
-
-    // if (i < MAX_TEXT_LEN / 2) {
-    //   i = i + v.length - 1;
-    //   while (s[i] && i < MAX_TEXT_LEN) {
-    //     i++;
-    //   }
-    //   trimmedText = s.substring(0,i);
-    // } else {
-    //   while (s[i] && s.length - i >= MAX_TEXT_LEN) {
-    //     i--;
-    //   }
-    //   trimmedText = s.substring(i, s.length - 1);
-    // }
