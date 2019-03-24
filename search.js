@@ -90,22 +90,17 @@ var search = (v) => {
       body = body ? body.toLowerCase() : '';
       var searchKeywords = Object.keys(o.matchData.metadata); //lunr returns this json result
       console.log(file.title, ":", o.score, o.matchData.metadata);
-      //
-      // todo add own filtered full key in searchKeywords eg: searched not search
-      //
+      // TODO add own filtered full key in searchKeywords eg: searched not search
       searchKeywords.forEach(function(term) {
         console.log("term:",term);
         var placesFoundIn = Object.keys(o.matchData.metadata[term]); // => title/desc/body
         placesFoundIn.forEach(function(place) {
           console.log("place:",place);
           if (place == "title") {
-            // title = addHighlight(term, file);
             indexesTitle = indexesTitle.concat(multiSearch(term, title)); // key to search, content to search on
           } else if (place == "desc") {
             indexesDesc = indexesDesc.concat(multiSearch(term, desc));
-            // desc = addHighlight(term, desc);
           } else if (!indexesDesc.length && place == "body") { // if not found in desc then go for body
-            // indexesBody = indexesBody.concat(multiSearch(term, body));
             bodyTerms.push(term);
           }
         });
@@ -124,6 +119,9 @@ var search = (v) => {
           indexesBody = indexesBody.concat(multiSearch(term, text.toLowerCase()));
         });
         text = highlight(text, indexesBody);
+      }
+      if (layout) {
+        layout = layout.charAt(0).toUpperCase() + layout.slice(1);
       }
       console.log("indeces:",indexesTitle,indexesDesc,indexesBody)
       let q = {
