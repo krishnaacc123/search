@@ -33,7 +33,9 @@ var multiSearch = (v, s) => {
 }
 
 function trimString(s, term) {
-  var startIndex = s.indexOf(term);
+  var reg = new RegExp(term, "i");
+  var startIndex = reg.exec(s).index;
+  console.log("startIndex:",startIndex);
   var endIndex = startIndex + term.length - 1;
   var trimmedText = "";
   if (s.length <= MAX_TEXT_LEN) {
@@ -115,7 +117,9 @@ var search = (v) => {
       if (indexesDesc.length) {
         text = highlight(file.desc, indexesDesc);
       } else if (bodyTerms.length) {
+        console.log("bodyyy:",bodyTerms)
         text = trimString(file.body, bodyTerms[0]);
+        console.log("trimstring:",text);
         bodyTerms.forEach(function(term) {
           indexesBody = indexesBody.concat(multiSearch(term, text.toLowerCase()));
         });
