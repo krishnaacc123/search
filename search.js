@@ -27,13 +27,15 @@ var multiSearch = (searchStr, str) => {
     }
     startIndex = index + searchStr.length;
   }
-  console.log("searching:",searchStr,"=>",search)
+  // console.log("searching:",searchStr,"=>",search)
   return search;
 }
 
+// trims text to max 200 length around the term
 function trimString(s, term) {
-  var reg = new RegExp(term, "i");
-  var startIndex = reg.exec(s).index;
+  var str = s.toLowerCase();
+  term = term.toLowerCase();
+  var startIndex = str.indexOf(term);
   console.log("startIndex:",startIndex);
   var endIndex = startIndex + term.length - 1;
   var trimmedText = "";
@@ -79,7 +81,7 @@ var search = (findThis) => {
 
   var searchKeywords = findThis.split(' ');
 
-  console.log("search_result:",search_result);
+  // console.log("search_result:",search_result);
   search_result = search_result.slice(0, 50); // only look in first fifty results
   search_result.forEach((o) => {
     if(o.score > 0) {               // filter out 0 score results 
@@ -108,9 +110,9 @@ var search = (findThis) => {
       if (indexesDesc.length) {
         text = highlight(file.desc, indexesDesc);
       } else if (bodyTerm) {
-        console.log("bodyyy:",bodyTerm)
+        // console.log("bodyyy:",bodyTerm)
         text = trimString(file.body, bodyTerm);
-        console.log("trimstring:",text);
+        // console.log("trimstring:",text);
         searchKeywords.forEach(function (trm) {
           indexesBody = indexesBody.concat(multiSearch(trm, body));
         });
