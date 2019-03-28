@@ -36,7 +36,7 @@ function trimString(s, term) {
   var str = s.toLowerCase();
   term = term.toLowerCase();
   var startIndex = str.indexOf(term);
-  console.log("startIndex:",startIndex);
+  // console.log("startIndex:",startIndex);
   var endIndex = startIndex + term.length - 1;
   var trimmedText = "";
   if (s.length <= MAX_TEXT_LEN) {
@@ -88,7 +88,7 @@ var search = (findThis) => {
       let file = allContent[o.ref]; // o.ref is id to differentiate all json data
       let { title, desc, body, layout, url } = file;
       let indexesTitle = [], indexesDesc = [], indexesBody = [],
-          text = "", bodyTerm, indexesBodyTemp = [], foundFirstTermForBody = false;
+          text = '', bodyTerm, indexesBodyTemp = [], foundFirstTermForBody = false, lowerText = '';
       title = title ? title.toLowerCase() : ''; // converting once and all to lowercase for ease in searching
       desc = desc ? desc.toLowerCase() : '';
       body = body ? body.toLowerCase() : '';
@@ -110,11 +110,10 @@ var search = (findThis) => {
       if (indexesDesc.length) {
         text = highlight(file.desc, indexesDesc);
       } else if (bodyTerm) {
-        // console.log("bodyyy:",bodyTerm)
         text = trimString(file.body, bodyTerm);
-        // console.log("trimstring:",text);
+        lowerText = text.toLowerCase();
         searchKeywords.forEach(function (trm) {
-          indexesBody = indexesBody.concat(multiSearch(trm, body));
+          indexesBody = indexesBody.concat(multiSearch(trm, lowerText));
         });
         text = highlight(text, indexesBody);
         text = '...' + text + '...';
