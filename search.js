@@ -16,19 +16,18 @@ var idx = lunr(function () {
   }, this)
 });
 
-var multiSearch = (v, s) => {
-  console.log();
-  var re = new RegExp(v, "g"),
-    match = [],
-    search = [];
-  while ((match = re.exec(s)) != null) {
-    search.push({ start: match.index, end: match.index + v.length - 1 });
+var multiSearch = (searchStr, str) => {
+  var search = [], startIndex = 0, index;
+  searchStr = searchStr.toLowerCase();
+  while ((index = str.indexOf(searchStr, startIndex)) > -1) {
+    search.push({ start: index, end: index + searchStr.length - 1 });
     if (search[search.length - 1].end - search[0].start >= MAX_TEXT_LEN) {
       search.pop();// remove last one
       break;
     }
+    startIndex = index + searchStr.length;
   }
-  console.log("searching:",v,"=>",search)
+  console.log("searching:",searchStr,"=>",search)
   return search;
 }
 
@@ -42,7 +41,7 @@ function trimString(s, term) {
     trimmedText = s;
   }
   else {
-    trimmedText = '...' + s.substring(startIndex - MAX_TEXT_LEN / 2, endIndex + MAX_TEXT_LEN / 2) + '...';
+    trimmedText = s.substring(startIndex - MAX_TEXT_LEN / 2, endIndex + MAX_TEXT_LEN / 2);
   }
   return trimmedText;
 }
@@ -66,59 +65,57 @@ function highlight(str, indexes) {
 
 /* Core search functionality
 /* */
-var search = (v) => {
-  if(!v) {
+var search = (findThis) => {
+  if(!findThis) {
     return [];  // if empty return
   }
   var results = [], search_result = [];
-  console.log("----------search------------",v);
+  console.log("----------search------------",findThis);
   try {
-    search_result = idx.search(v);
+    search_result = idx.search(findThis);
   } catch(e) {
     return [];  // if error occurs in lunr search return
   }
 
+  var searchKeywords = findThis.split(' ');
+
   console.log("search_result:",search_result);
-  
+  search_result = search_result.slice(0, 50); // only look in first fifty results
   search_result.forEach((o) => {
     if(o.score > 0) {               // filter out 0 score results 
       let file = allContent[o.ref]; // o.ref is id to differentiate all json data
       let { title, desc, body, layout, url } = file;
-      let indexesTitle = [], indexesDesc = [], indexesBody = [], text = "", bodyTerms =[];
+      let indexesTitle = [], indexesDesc = [], indexesBody = [],
+          text = "", bodyTerm, indexesBodyTemp = [], foundFirstTermForBody = false;
       title = title ? title.toLowerCase() : ''; // converting once and all to lowercase for ease in searching
       desc = desc ? desc.toLowerCase() : '';
       body = body ? body.toLowerCase() : '';
-      var searchKeywords = Object.keys(o.matchData.metadata); //lunr returns this json result
       console.log(file.title, ":", o.score, o.matchData.metadata);
-      // TODO add own filtered full key in searchKeywords eg: searched not search
       searchKeywords.forEach(function(term) {
         console.log("term:",term);
-        var placesFoundIn = Object.keys(o.matchData.metadata[term]); // => title/desc/body
-        placesFoundIn.forEach(function(place) {
-          console.log("place:",place);
-          if (place == "title") {
-            indexesTitle = indexesTitle.concat(multiSearch(term, title)); // key to search, content to search on
-          } else if (place == "desc") {
-            indexesDesc = indexesDesc.concat(multiSearch(term, desc));
-          } else if (!indexesDesc.length && place == "body") { // if not found in desc then go for body
-            bodyTerms.push(term);
-          }
-        });
+        indexesTitle = indexesTitle.concat(multiSearch(term, title)); // key to search, content to search on
+        indexesDesc = indexesDesc.concat(multiSearch(term, desc));
+        indexesBodyTemp = multiSearch(term, body);// TODO replace by indexof keeping in mind casing
+        if (!foundFirstTermForBody && indexesBodyTemp.length) {
+          bodyTerm = term;
+          foundFirstTermForBody = true;
+        }
       });
-      title = file.title;
+      title = file.title; // if not foung in title reset to original as it's lowercase
       if (indexesTitle.length) {
         title = highlight(file.title, indexesTitle);
       }
       if (indexesDesc.length) {
         text = highlight(file.desc, indexesDesc);
-      } else if (bodyTerms.length) {
-        console.log("bodyyy:",bodyTerms)
-        text = trimString(file.body, bodyTerms[0]);
+      } else if (bodyTerm) {
+        console.log("bodyyy:",bodyTerm)
+        text = trimString(file.body, bodyTerm);
         console.log("trimstring:",text);
-        bodyTerms.forEach(function(term) {
-          indexesBody = indexesBody.concat(multiSearch(term, text.toLowerCase()));
+        searchKeywords.forEach(function (trm) {
+          indexesBody = indexesBody.concat(multiSearch(trm, body));
         });
         text = highlight(text, indexesBody);
+        text = '...' + text + '...';
       }
       if (layout) {
         layout = layout.charAt(0).toUpperCase() + layout.slice(1);
@@ -127,7 +124,7 @@ var search = (v) => {
       let q = {
         title: title,
         url,
-        hl: text || file.desc,
+        hl: text || file.desc || "",
         tag: layout || "Docs"
       };
       results.push(q);

@@ -11,8 +11,13 @@ app.all('*', function(req, res, next) {
 });
 
 app.get('/api/:search', (req, res) => {
-  var key = decodeURIComponent(req.params.search)
-  var result = search(key);
+  var key = '', result = [];
+  try {
+    key = decodeURIComponent(req.params.search)
+    result = search(key);
+  } catch(e) {
+    console.log("error:",e)
+  }
   res.status(200).send({
     data: result
   })
