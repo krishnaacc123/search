@@ -52,6 +52,14 @@ function highlight(str, indexes) {
   const HL_START = '<span class="highlight">';
   const HL_END = '</span>';
   var padding = 0;
+  indexes.sort(function(a, b){
+    var keyA = a.start,
+        keyB = b.start;
+    // Compare the 2 dates
+    if(keyA < keyB) return -1;
+    if(keyA > keyB) return 1;
+    return 0;
+  });
   for(var i = 0; i < indexes.length; i++) {
     padding = i * (HL_START.length + HL_END.length)
     indexes[i].start = indexes[i].start + padding;
@@ -94,8 +102,9 @@ var search = (findThis) => {
       body = body ? body.toLowerCase() : '';
       console.log(file.title, ":", o.score, o.matchData.metadata);
       searchKeywords.forEach(function(term) {
-        console.log("term:",term);
+        // console.log("term:",term);
         indexesTitle = indexesTitle.concat(multiSearch(term, title)); // key to search, content to search on
+        console.log("term:",term,indexesTitle);
         indexesDesc = indexesDesc.concat(multiSearch(term, desc));
         indexesBodyTemp = multiSearch(term, body);// TODO replace by indexof keeping in mind casing
         if (!foundFirstTermForBody && indexesBodyTemp.length) {
@@ -111,6 +120,7 @@ var search = (findThis) => {
         text = highlight(file.desc, indexesDesc);
       } else if (bodyTerm) {
         text = trimString(file.body, bodyTerm);
+        console.log("trimtext:",text);
         lowerText = text.toLowerCase();
         searchKeywords.forEach(function (trm) {
           indexesBody = indexesBody.concat(multiSearch(trm, lowerText));
