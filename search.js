@@ -52,12 +52,9 @@ function highlight(str, indexes) {
   const HL_START = '<span class="highlight">';
   const HL_END = '</span>';
   var padding = 0;
-  indexes.sort(function(a, b){
-    var keyA = a.start,
-        keyB = b.start;
-    // Compare the 2 dates
-    if(keyA < keyB) return -1;
-    if(keyA > keyB) return 1;
+  indexes.sort(function(a, b) {
+    if(a.start < b.start) return -1;
+    if(a.start > b.start) return 1;
     return 0;
   });
   for(var i = 0; i < indexes.length; i++) {
@@ -88,7 +85,13 @@ var search = (findThis) => {
   }
 
   var searchKeywords = findThis.split(' ');
-
+  searchKeywords = searchKeywords.map(function(key) {
+    return key.toLowerCase();
+  })
+  searchKeywords = searchKeywords.filter(function(item, pos, self) {
+    return self.indexOf(item) == pos;
+  })
+  console.log("searh",searchKeywords);
   // console.log("search_result:",search_result);
   search_result = search_result.slice(0, 50); // only look in first fifty results
   search_result.forEach((o) => {
