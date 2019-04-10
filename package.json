@@ -4,9 +4,10 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "start": "node_modules/.bin/nodemon app.js --exec babel-node --"
+    "start": "node_modules/.bin/nodemon app.js --exec babel-node --",
+    "start:prod": "node src/index.js"
   },
-  "author": "Dhrubesh",
+  "author": "Krishna",
   "license": "ISC",
   "dependencies": {
     "babel-cli": "^6.26.0",
